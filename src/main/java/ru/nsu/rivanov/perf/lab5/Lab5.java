@@ -3,21 +3,31 @@ package ru.nsu.rivanov.perf.lab5;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Lab5 {
-    static <T> T setLogging(final T obj) {
+    static <T> Object setLogging(final T obj) {
 
-//        Class<?>[] interfaces = obj.getClass().getInterfaces();
         InvocationHandler loggingHandler = (proxy, method, args) -> {
-            System.out.println("Calling " + obj + "#" + method.getName());
-            Object result = method.invoke(proxy, args);
+            List<Class<?>> interfaces = Arrays.asList(obj.getClass().getInterfaces());
+            String targetName = method.getName();
+            for (Class<?> anInterface : interfaces) {
+                Arrays.stream(anInterface.getMethods())
+                        .map(Method::getName)
+                        .filter(targetName::contains)
+                        .findAny()
+                        .ifPresent(methodName -> System.out.println("Calling " + methodName + "#" + anInterface.getCanonicalName()));
+            }
+            Object result = method.invoke(obj, args);
             System.out.println("RETURN VAL: " + result);
             return result;
         };
 
 
-        T instance = (T) Proxy.newProxyInstance(Lab5.class.getClassLoader(),
-                new Class[]{obj.getClass()},
+        Object instance = Proxy.newProxyInstance(Lab5.class.getClassLoader(),
+                obj.getClass().getInterfaces(),
                 loggingHandler
         );
         return instance;
@@ -36,7 +46,7 @@ public class Lab5 {
 
     public static void main(String[] args) {
         A a = new A();
-        A a1 = setLogging(a);
+        B a1 = (B) setLogging(a);
         a1.foo();
     }
 }
